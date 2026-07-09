@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  project1:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: project1_hackerrank_rag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: bash scripts/download_data.sh
+      - run: pytest -q
+
+  project2:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: project2_ldsa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest -q
