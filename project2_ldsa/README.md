@@ -11,11 +11,12 @@ cd project2_ldsa
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python scripts/download_moroccan_sources.py
 streamlit run app.py
 ```
 
-The downloader saves available registered PDFs to `data/morocco/ar/` and `data/morocco/fr/`. Review every source, consolidation date, and amendment before relying on it. The Arabic Official Bulletin is authoritative; a French translation may be older or incomplete.
+On first launch, the app downloads available PDFs registered in `data/moroccan_legal_sources.json` from the Moroccan Ministry of Justice Adala portal. To download them manually, run `python scripts/download_moroccan_sources.py`.
+
+Review every source, consolidation date, and amendment before relying on it. The Arabic Official Bulletin is authoritative; a French translation may be older or incomplete.
 
 OpenAI is optional. Without `OPENAI_API_KEY`, the project uses local multilingual embeddings and extractive summaries. If configured, OpenAI is used for document summaries.
 
@@ -27,7 +28,7 @@ OpenAI is optional. Without `OPENAI_API_KEY`, the project uses local multilingua
 4. Add `OPENAI_API_KEY` under app Secrets only if you want OpenAI summaries.
 5. Deploy.
 
-The Streamlit app uses `project2_ldsa/requirements.txt`. Add the legal PDFs to the deployment environment or run the downloader in the project before deployment. The repository does not include the source PDFs.
+The app downloads the registered legal PDFs on first startup; no API key is required for local embeddings or retrieval. Streamlit Community Cloud has resource limits, so first startup can take several minutes while the embedding model is downloaded and the index is built.
 
 ## Validation
 

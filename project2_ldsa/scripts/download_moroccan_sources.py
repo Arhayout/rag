@@ -13,7 +13,8 @@ REGISTRY = ROOT / "data" / "moroccan_legal_sources.json"
 DESTINATION = ROOT / "data" / "morocco"
 
 
-def main() -> int:
+def download_sources() -> int:
+    """Download registered PDFs, skipping unavailable or already saved sources."""
     registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
     downloaded = 0
     skipped: list[str] = []
@@ -52,6 +53,11 @@ def main() -> int:
         for entry in skipped:
             print(f"- {entry}")
     print("\nVerify each document's consolidation date and amendments before legal use.")
+    return downloaded
+
+
+def main() -> int:
+    download_sources()
     return 0
 
 
