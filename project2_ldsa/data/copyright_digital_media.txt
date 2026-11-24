@@ -1,9 +1,0 @@
-Case: Rivera v. StreamCast Media (2024)
-
-Summary of dispute: Independent filmmaker Elena Rivera alleged that StreamCast Media reproduced substantial portions of her documentary without license for an online streaming catalog. The plaintiff claimed direct copyright infringement under 17 U.S.C. Section 501 and sought statutory damages.
-
-Key issues: Whether short excerpting for promotional thumbnails constituted fair use; whether the defendant's Content ID workflow provided adequate prior notice; whether willful infringement supported enhanced damages.
-
-Court findings: The district court held that wholesale reproduction of 14-minute segments exceeded fair-use limits. Transformative purpose was not established because the clips were presented in full narrative context for commercial subscription revenue. The court awarded $125,000 in damages and issued an injunction requiring removal of infringing copies within 30 days.
-
-Legal significance: Reinforces that digital distributors must validate rights clearance before publication, even when user-upload workflows are automated.

@@ -1,9 +1,0 @@
-Case: Horizon Retail v. CodeForge LLC (2024)
-
-Summary of dispute: Horizon Retail contracted CodeForge to deliver a custom inventory forecasting platform by December 31, 2023. Horizon terminated the agreement after repeated milestone delays and filed suit for breach of contract, alleging failure to provide source code escrow materials and service-level compliance.
-
-Key issues: Whether force majeure applied to staffing shortages; whether partial delivery of a non-production MVP constituted substantial performance; enforceability of liquidated damages clause capping liability at 12 months of fees.
-
-Court findings: The court rejected the force majeure defense because staffing constraints were within the contractor's control. Partial delivery did not satisfy the express acceptance criteria in Statement of Work Appendix B. Horizon recovered $480,000 in fees plus consequential damages for lost holiday-season sales, subject to the contractual liability cap.
-
-Legal significance: Highlights the importance of objective acceptance tests and source-code escrow in enterprise software agreements.

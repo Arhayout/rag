@@ -1,9 +1,0 @@
-Case: Nguyen v. AutoDrive Systems (2025)
-
-Summary of dispute: A pedestrian, Linh Nguyen, was injured when an AutoDrive Level-3 vehicle transitioned from autonomous mode to manual control during a rainstorm and collided with a crosswalk signal pole before striking the plaintiff. Nguyen sued the manufacturer and fleet operator for negligence and product liability.
-
-Key issues: Allocation of fault between human safety driver and automated perception stack; adequacy of handoff warnings; whether training data omissions constituted a design defect; applicability of comparative negligence where the safety driver failed to intervene for 6.8 seconds.
-
-Court findings: The jury apportioned 55% liability to AutoDrive for sensor fusion failures in low-visibility conditions and 25% to the fleet operator for insufficient driver monitoring. The safety driver bore 20% comparative fault. Total compensatory damages were $2.1 million.
-
-Legal significance: Establishes that partial autonomy does not eliminate manufacturer responsibility when system limitations are foreseeable and warnings are inadequate.

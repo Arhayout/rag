@@ -1,9 +1,0 @@
-Case: NeuralWorks Inc. v. BrightAI Labs (2025)
-
-Summary of dispute: NeuralWorks alleged that BrightAI's enterprise chatbot platform infringed U.S. Patent 10,998,221 covering a method for retrieval-augmented response generation with confidence-based citation filtering. NeuralWorks sought injunctive relief and lost profits.
-
-Key issues: Claim construction for "confidence-based citation filtering"; whether BrightAI's implementation using separate reranking module fell outside the claim language; invalidity defense based on prior art from academic publications dated 2019.
-
-Court findings: The Federal Circuit affirmed in part that the district court's claim construction was too broad. On remand, the district court granted summary judgment of non-infringement because BrightAI's architecture applied reranking after generation rather than filtering citations during generation as required by the asserted claims.
-
-Legal significance: Demonstrates that AI product teams must map technical architecture to patent claim elements early in development to reduce infringement exposure.

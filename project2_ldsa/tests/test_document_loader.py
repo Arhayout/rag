@@ -1,23 +1,42 @@
-"""Tests for Moroccan Arabic/French legal document loading."""
+"""Tests for Arabic/French legal document loading."""
 
 from pathlib import Path
+
+import pytest
 
 from src.document_loader import LegalDocumentLoader
 
 
-def test_load_documents_returns_arabic_and_french_metadata(tmp_path: Path) -> None:
-    for language, filename, body in (
-        ("ar", "labour.txt", "نص قانوني باللغة العربية"),
-        ("fr", "travail.txt", "Texte juridique en français"),
-    ):
+def test_load_documents_adds_language_and_jurisdiction_metadata(
+    tmp_path: Path,
+) -> None:
+    samples = {
+        "ar": "نص قانوني باللغة العربية",
+        "fr": "Texte juridique en français",
+    }
+    for language, content in samples.items():
         folder = tmp_path / language
         folder.mkdir()
-        (folder / filename).write_text(body, encoding="utf-8")
+        (folder / "law.txt").write_text(content, encoding="utf-8")
 
     documents = LegalDocumentLoader(tmp_path).load_documents()
 
     assert len(documents) == 2
-    assert {doc.metadata["language"] for doc in documents} == {"ar", "fr"}
-    assert all(doc.metadata["jurisdiction"] == "MA" for doc in documents)
-    assert all(doc.metadata["document_type"] == "moroccan_legislation" for doc in documents)
-    assert all(Path(doc.metadata["source"]).is_file() for doc in documents)
+    assert {document.metadata["language"] for document in documents} == {"ar", "fr"}
+    assert all(document.metadata["jurisdiction"] == "MA" for document in documents)
+    assert all(
+        document.metadata["document_type"] == "moroccan_legislation"
+        for document in documents
+    )
+    assert all(Path(document.metadata["source"]).is_file() for document in documents)
+
+
+def test_loader_rejects_empty_corpus(tmp_path: Path) -> None:
+    (tmp_path / "ar").mkdir()
+    with pytest.raises(ValueError, match="No PDF or TXT documents"):
+        LegalDocumentLoader(tmp_path).load_documents()
+
+
+def test_loader_rejects_missing_directory(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError, match="Corpus directory"):
+        LegalDocumentLoader(tmp_path / "missing")

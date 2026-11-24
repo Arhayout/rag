@@ -1,9 +1,0 @@
-Case: European Data Protection Board Action against ShopGlobal (2024)
-
-Summary of dispute: ShopGlobal, a cross-border e-commerce platform, was investigated after consumers reported receipt of marketing emails without valid consent following account deletion requests. Supervisory authorities examined GDPR compliance for data retention, consent logs, and cross-border processor agreements.
-
-Key issues: Lawful basis for marketing under Article 6; right to erasure under Article 17; whether anonymized analytics identifiers remained personal data; adequacy of Standard Contractual Clauses with U.S. analytics vendors.
-
-Findings: Regulators determined ShopGlobal failed to honor erasure requests within the statutory one-month period and could not demonstrate granular consent for secondary marketing use. A fine of EUR 3.2 million was imposed, with a remediation plan requiring consent ledger reconstruction and deletion workflow automation.
-
-Legal significance: Shows that technical deletion pipelines and vendor oversight are essential for GDPR-compliant consumer platforms.

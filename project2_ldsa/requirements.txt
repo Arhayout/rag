@@ -1,9 +1,9 @@
-langchain-openai
-langchain-community
 faiss-cpu
-streamlit
+langchain-community
+langchain-core
+langchain-huggingface
+langchain-openai
+pypdf
 python-dotenv
 sentence-transformers
-langchain-huggingface
-pypdf
-pytest
+streamlit
