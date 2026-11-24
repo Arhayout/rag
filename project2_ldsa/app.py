@@ -1,21 +1,17 @@
-"""Multilingual legal copilot for French and Moroccan law.
-
-Answers are capped at 100 words. Uploaded files and RSS checks remain session-local.
-"""
+"""Multilingual legal copilot for French and Moroccan law."""
 from __future__ import annotations
 
 import io
 import logging
+from xml.sax.saxutils import escape
+
 import streamlit as st
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from reportlab.lib.units import cm
 
-from src.assistant_features import (
-    answer_with_groq, build_upload_index, search_index, transcribe_audio,
-    read_legal_feed, trim_words,
-)
+from src.assistant_features import answer_with_groq, build_upload_index, search_index, transcribe_audio, read_legal_feed
 from src.config import DEFAULT_TOP_K, JURISDICTIONS
 from src.document_loader import LegalDocumentLoader
 from src.vector_store import LegalDocumentStore
@@ -25,58 +21,40 @@ logger = logging.getLogger(__name__)
 
 UI = {
     "English": {
-        "title": "Legal AI Copilot", "subtitle": "Source-grounded legal research for Morocco and France.",
-        "language": "Interface", "country": "Legal jurisdiction", "dark": "☀️ Light mode",
-        "light": "🌙 Dark mode", "question": "Ask a legal question",
-        "placeholder": "Describe your legal question or situation…", "ask": "Analyze",
-        "mode": "Analysis type", "general": "Legal question", "situation": "Legal situation",
-        "voice": "🎙️ Ask by voice", "transcribe": "Transcribe audio", "answer": "AI answer",
-        "sources": "Official legal sources", "upload": "Upload contract or PDF",
-        "contract": "Analyze document", "contract_prompt": "What should I check in this document?",
-        "compare": "Compare French and Moroccan law", "compare_q": "What legal issue should be compared?",
-        "updates": "Legal updates", "feed": "Official RSS feed URL", "check": "Check updates",
-        "no_feed": "Enter an official RSS/Atom feed URL. Checks are manual and session-only.",
-        "empty": "No relevant official sources found in this jurisdiction. Add verified legal documents first.",
-        "disclaimer": "Legal information only, not legal advice. Verify current official texts and consult a qualified lawyer.",
-        "download": "Download answer as PDF", "no_key": "Configure GROQ_API_KEY in Streamlit Secrets.",
-        "upload_help": "PDF files only. Files are processed in memory and are not added to the public legal corpus.",
-        "law_context": "Also retrieve official legal sources", "notification": "Updates found",
+        "title":"Legal AI Copilot","subtitle":"Source-grounded legal research for Morocco and France.","country":"Legal jurisdiction",
+        "dark":"☀️ Light mode","light":"🌙 Dark mode","question":"Ask a legal question","placeholder":"Describe your legal question or situation…",
+        "ask":"Analyze","mode":"Analysis type","general":"Legal question","situation":"Legal situation","voice":"🎙️ Ask by voice",
+        "transcribe":"Transcribe audio","answer":"AI answer","upload":"Upload contract or PDF","contract":"Analyze document",
+        "contract_prompt":"What should I check in this document?","compare":"Compare French and Moroccan law",
+        "compare_q":"What legal issue should be compared?","updates":"Legal updates","feed":"Official RSS feed URL",
+        "check":"Check updates","no_feed":"Manual checks only. HTTPS feeds must use an allowlisted official government domain.",
+        "empty":"No relevant official sources found. Add verified legal documents first.","disclaimer":"Legal information only, not legal advice. Verify current official texts and consult a qualified lawyer.",
+        "download":"Download answer as PDF","no_key":"Configure GROQ_API_KEY in Streamlit Secrets.","upload_help":"PDF only, maximum 15 MB per file. Processed in memory for this session.",
+        "law_context":"Also retrieve official legal sources","notification":"Updates found","language":"Interface",
     },
     "Français": {
-        "title": "Assistant juridique IA", "subtitle": "Recherche juridique sourcée pour le Maroc et la France.",
-        "language": "Interface", "country": "Juridiction", "dark": "☀️ Mode clair",
-        "light": "🌙 Mode sombre", "question": "Poser une question juridique",
-        "placeholder": "Décrivez votre question ou situation juridique…", "ask": "Analyser",
-        "mode": "Type d’analyse", "general": "Question juridique", "situation": "Situation concrète",
-        "voice": "🎙️ Question vocale", "transcribe": "Transcrire l’audio", "answer": "Réponse IA",
-        "sources": "Sources juridiques officielles", "upload": "Importer un contrat ou PDF",
-        "contract": "Analyser le document", "contract_prompt": "Que souhaitez-vous vérifier dans ce document ?",
-        "compare": "Comparer le droit français et marocain", "compare_q": "Quel sujet juridique comparer ?",
-        "updates": "Veille juridique", "feed": "URL du flux RSS officiel", "check": "Vérifier les nouveautés",
-        "no_feed": "Saisissez l’URL d’un flux RSS/Atom officiel. Vérification manuelle, limitée à la session.",
-        "empty": "Aucune source officielle pertinente trouvée. Ajoutez d’abord des textes juridiques vérifiés.",
-        "disclaimer": "Information juridique, pas un conseil juridique. Vérifiez les textes officiels en vigueur et consultez un avocat.",
-        "download": "Télécharger la réponse en PDF", "no_key": "Configurez GROQ_API_KEY dans les Secrets Streamlit.",
-        "upload_help": "PDF uniquement. Les fichiers sont traités en mémoire et ne rejoignent pas le corpus public.",
-        "law_context": "Rechercher aussi les sources juridiques officielles", "notification": "Nouveautés trouvées",
+        "title":"Assistant juridique IA","subtitle":"Recherche juridique sourcée pour le Maroc et la France.","country":"Juridiction",
+        "dark":"☀️ Mode clair","light":"🌙 Mode sombre","question":"Poser une question juridique","placeholder":"Décrivez votre question ou situation juridique…",
+        "ask":"Analyser","mode":"Type d’analyse","general":"Question juridique","situation":"Situation concrète","voice":"🎙️ Question vocale",
+        "transcribe":"Transcrire l’audio","answer":"Réponse IA","upload":"Importer un contrat ou PDF","contract":"Analyser le document",
+        "contract_prompt":"Que souhaitez-vous vérifier dans ce document ?","compare":"Comparer le droit français et marocain",
+        "compare_q":"Quel sujet juridique comparer ?","updates":"Veille juridique","feed":"URL du flux RSS officiel",
+        "check":"Vérifier les nouveautés","no_feed":"Vérification manuelle uniquement. Flux HTTPS hébergés sur un domaine gouvernemental officiel autorisé.",
+        "empty":"Aucune source officielle pertinente trouvée. Ajoutez d’abord des textes juridiques vérifiés.","disclaimer":"Information juridique, pas un conseil juridique. Vérifiez les textes officiels en vigueur et consultez un avocat.",
+        "download":"Télécharger la réponse en PDF","no_key":"Configurez GROQ_API_KEY dans les Secrets Streamlit.","upload_help":"PDF uniquement, 15 Mo maximum par fichier. Traitement en mémoire pendant la session.",
+        "law_context":"Rechercher aussi les sources juridiques officielles","notification":"Nouveautés trouvées","language":"Interface",
     },
     "العربية": {
-        "title": "المساعد القانوني الذكي", "subtitle": "بحث قانوني موثق لقوانين المغرب وفرنسا.",
-        "language": "لغة الواجهة", "country": "النظام القانوني", "dark": "☀️ الوضع الفاتح",
-        "light": "🌙 الوضع الداكن", "question": "اطرح سؤالاً قانونياً",
-        "placeholder": "اشرح سؤالك أو وضعك القانوني…", "ask": "تحليل",
-        "mode": "نوع التحليل", "general": "سؤال قانوني", "situation": "حالة قانونية",
-        "voice": "🎙️ سؤال صوتي", "transcribe": "تحويل الصوت إلى نص", "answer": "إجابة الذكاء الاصطناعي",
-        "sources": "المصادر القانونية الرسمية", "upload": "تحميل عقد أو ملف PDF",
-        "contract": "تحليل المستند", "contract_prompt": "ما الذي تريد التحقق منه في هذا المستند؟",
-        "compare": "مقارنة القانون المغربي والفرنسي", "compare_q": "ما الموضوع القانوني المطلوب مقارنته؟",
-        "updates": "التحديثات القانونية", "feed": "رابط موجز RSS رسمي", "check": "تحقق من التحديثات",
-        "no_feed": "أدخل رابط موجز RSS/Atom رسمي. التحقق يدوي ومؤقت خلال الجلسة.",
-        "empty": "لم يتم العثور على مصادر رسمية مناسبة. أضف نصوصاً قانونية موثقة أولاً.",
-        "disclaimer": "معلومات قانونية وليست استشارة قانونية. تحقق من النصوص الرسمية واستشر محامياً مختصاً.",
-        "download": "تحميل الإجابة PDF", "no_key": "أضف GROQ_API_KEY إلى Streamlit Secrets.",
-        "upload_help": "ملفات PDF فقط. تتم المعالجة في الذاكرة ولا تضاف إلى corpus العام.",
-        "law_context": "البحث أيضاً في المصادر القانونية الرسمية", "notification": "تحديثات جديدة",
+        "title":"المساعد القانوني الذكي","subtitle":"بحث قانوني موثق لقوانين المغرب وفرنسا.","country":"النظام القانوني",
+        "dark":"☀️ الوضع الفاتح","light":"🌙 الوضع الداكن","question":"اطرح سؤالاً قانونياً","placeholder":"اشرح سؤالك أو وضعك القانوني…",
+        "ask":"تحليل","mode":"نوع التحليل","general":"سؤال قانوني","situation":"حالة قانونية","voice":"🎙️ سؤال صوتي",
+        "transcribe":"تحويل الصوت إلى نص","answer":"إجابة الذكاء الاصطناعي","upload":"تحميل عقد أو ملف PDF","contract":"تحليل المستند",
+        "contract_prompt":"ما الذي تريد التحقق منه في هذا المستند؟","compare":"مقارنة القانون المغربي والفرنسي",
+        "compare_q":"ما الموضوع القانوني المطلوب مقارنته؟","updates":"التحديثات القانونية","feed":"رابط موجز RSS رسمي",
+        "check":"تحقق من التحديثات","no_feed":"التحقق يدوي فقط. يجب أن يكون رابط HTTPS على نطاق حكومي رسمي معتمد.",
+        "empty":"لم يتم العثور على مصادر رسمية مناسبة. أضف نصوصاً قانونية موثقة أولاً.","disclaimer":"معلومات قانونية وليست استشارة قانونية. تحقق من النصوص الرسمية واستشر محامياً مختصاً.",
+        "download":"تحميل الإجابة PDF","no_key":"أضف GROQ_API_KEY إلى Streamlit Secrets.","upload_help":"ملفات PDF فقط، بحد أقصى 15 ميغابايت لكل ملف. تتم المعالجة في الذاكرة.",
+        "law_context":"البحث أيضاً في المصادر القانونية الرسمية","notification":"تحديثات جديدة","language":"لغة الواجهة",
     },
 }
 
@@ -99,10 +77,10 @@ def make_pdf(title: str, body: str) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm)
     styles = getSampleStyleSheet()
-    story = [Paragraph(title, styles["Title"]), Spacer(1, 12)]
+    story = [Paragraph(escape(title), styles["Title"]), Spacer(1, 12)]
     for paragraph in body.splitlines():
         if paragraph.strip():
-            story.extend([Paragraph(paragraph.replace("&", "&amp;"), styles["BodyText"]), Spacer(1, 7)])
+            story.extend([Paragraph(escape(paragraph), styles["BodyText"]), Spacer(1, 7)])
     doc.build(story)
     return buffer.getvalue()
 
@@ -114,17 +92,13 @@ def show_answer(answer: str, title: str, sources: list) -> None:
         st.caption("Sources")
         for i, doc in enumerate(sources, 1):
             meta = doc.metadata
-            source = meta.get("source", "Uploaded document")
+            source = str(meta.get("source", "Uploaded document"))
             page = meta.get("page")
             st.markdown(f"**[S{i}]** {source}" + (f" — page {int(page)+1}" if page is not None else ""))
             with st.expander(f"Excerpt [S{i}]"):
-                st.write(doc.page_content[:1200])
-    st.download_button(
-        UI[st.session_state.ui_language]["download"],
-        data=make_pdf(title, answer),
-        file_name="legal-answer.pdf",
-        mime="application/pdf",
-    )
+                st.write(doc.page_content[:1000])
+    st.download_button(UI[st.session_state.ui_language]["download"], data=make_pdf(title, answer),
+                       file_name="legal-answer.pdf", mime="application/pdf")
 
 
 def main() -> None:
@@ -138,7 +112,7 @@ def main() -> None:
 
     header, theme_col = st.columns([5, 1])
     with header:
-        language = st.selectbox("Interface", list(UI), index=list(UI).index(st.session_state.ui_language), label_visibility="collapsed")
+        language = st.selectbox("Interface / Langue / اللغة", list(UI), index=list(UI).index(st.session_state.ui_language))
         st.session_state.ui_language = language
     t = UI[language]
     with theme_col:
@@ -149,43 +123,42 @@ def main() -> None:
     dark = st.session_state.theme == "dark"
     bg, fg, panel = ("#171a21", "#e6e9ef", "#222833") if dark else ("#f7f8fa", "#20242b", "#ffffff")
     st.markdown(f"<style>.stApp{{background:{bg};color:{fg}}} [data-testid='stSidebar']{{background:{panel}}}</style>", unsafe_allow_html=True)
-
     st.title(t["title"])
     st.caption(t["subtitle"])
-    jurisdiction_label = st.selectbox(t["country"], ["Morocco", "France"], format_func=lambda x: "المغرب" if language == "العربية" and x == "Morocco" else ("فرنسا" if language == "العربية" else x))
-    code = "MA" if jurisdiction_label == "Morocco" else "FR"
+
+    country = st.selectbox(t["country"], ["Morocco", "France"])
+    code = "MA" if country == "Morocco" else "FR"
     output_language = {"English": "en", "Français": "fr", "العربية": "ar"}[language]
     index = get_legal_index(code)
     if index is None:
         st.warning(t["empty"])
 
     tabs = st.tabs([t["question"], t["upload"], t["compare"], t["updates"]])
-
     with tabs[0]:
         mode = st.radio(t["mode"], [t["general"], t["situation"]], horizontal=True)
         query = st.text_area(t["question"], placeholder=t["placeholder"], max_chars=5000)
         audio = st.audio_input(t["voice"])
         if audio and st.button(t["transcribe"]):
             try:
-                transcript = transcribe_audio(audio.getvalue(), language=output_language)
+                transcript = transcribe_audio(audio.getvalue(), output_language)
                 st.session_state.voice_transcript = transcript
                 st.success(transcript)
             except Exception:
                 logger.exception("Audio transcription failed")
-                st.error("Audio transcription unavailable. Check Groq configuration.")
+                st.error(t["no_key"])
         if st.session_state.get("voice_transcript"):
             query = st.text_area("Transcript", value=st.session_state.voice_transcript, key="voice_text")
         if st.button(t["ask"], type="primary") and query.strip():
-            if not index:
+            if index is None:
                 st.warning(t["empty"])
             else:
                 docs = search_index(index, query, DEFAULT_TOP_K)
                 if docs:
-                    task = "Analyse this real-life legal situation. Identify issues, applicable rules, risks, missing facts and practical next steps." if mode == t["situation"] else "Answer the legal question concisely."
+                    task = ("Analyse this real-life legal situation. Identify issues, applicable rules, risks, missing facts and practical next steps."
+                            if mode == t["situation"] else "Answer the legal question concisely.")
                     try:
                         answer = answer_with_groq(query, docs, code, output_language, task)
-                        st.session_state.latest_answer = answer
-                        st.session_state.latest_sources = docs
+                        st.session_state.latest_answer, st.session_state.latest_sources = answer, docs
                     except RuntimeError:
                         st.error(t["no_key"])
                 else:
@@ -212,11 +185,10 @@ def main() -> None:
             try:
                 answer = answer_with_groq(
                     contract_question, combined, code, output_language,
-                    "Review the uploaded contract. Separate what the document explicitly says from legal interpretation. Flag ambiguous clauses, obligations, deadlines, risks and questions for a lawyer. Do not claim a clause is illegal unless retrieved law supports it.",
+                    "Review the uploaded contract. Separate explicit text from legal interpretation. Flag ambiguous clauses, obligations, deadlines, risks and questions for a lawyer. Do not claim illegality unless retrieved law supports it.",
                     extra_context="Uploaded files: " + st.session_state.upload_name,
                 )
-                st.session_state.latest_answer = answer
-                st.session_state.latest_sources = combined
+                st.session_state.latest_answer, st.session_state.latest_sources = answer, combined
                 show_answer(answer, t["contract"], combined)
             except RuntimeError:
                 st.error(t["no_key"])
@@ -232,29 +204,30 @@ def main() -> None:
                 st.warning("Comparison requires verified sources in both jurisdictions. One corpus is currently empty.")
             else:
                 try:
-                    comparison = answer_with_groq(
-                        comparison_query, ma_docs + fr_docs, "COMPARISON", output_language,
-                        "Compare the two legal systems in a structured way. Label every proposition Morocco or France. Do not merge rules. Explain differences, similarities and source gaps.",
-                        extra_context="MOROCCO SOURCES:\n" + "\n".join(d.page_content[:900] for d in ma_docs) + "\nFRANCE SOURCES:\n" + "\n".join(d.page_content[:900] for d in fr_docs),
+                    answer = answer_with_groq(
+                        comparison_query, ma_docs + fr_docs, "Morocco and France", output_language,
+                        "Compare the two legal systems. Label every proposition Morocco or France. Never merge rules.",
+                        extra_context="MOROCCO SOURCES:\n" + "\n".join(d.page_content[:700] for d in ma_docs)
+                                     + "\nFRANCE SOURCES:\n" + "\n".join(d.page_content[:700] for d in fr_docs),
                     )
-                    st.session_state.latest_answer = comparison
-                    st.session_state.latest_sources = ma_docs + fr_docs
-                    show_answer(comparison, t["compare"], ma_docs + fr_docs)
+                    st.session_state.latest_answer, st.session_state.latest_sources = answer, ma_docs + fr_docs
+                    show_answer(answer, t["compare"], ma_docs + fr_docs)
                 except RuntimeError:
                     st.error(t["no_key"])
 
     with tabs[3]:
         st.info(t["no_feed"])
         feed_url = st.text_input(t["feed"], placeholder="https://…/feed.xml")
-        if st.button(t["check"]) and feed_url.startswith("https://"):
+        if st.button(t["check"]) and feed_url:
             try:
                 st.session_state.feed_items = read_legal_feed(feed_url)
-            except Exception:
-                st.error("Feed unavailable. Verify that this is a trusted official RSS/Atom URL.")
+            except Exception as exc:
+                st.error(str(exc))
         for item in st.session_state.feed_items:
             st.markdown(f"- **{item['title']}** — {item['published']}  \n  {item['link']}")
         if st.session_state.feed_items:
-            st.caption(t["notification"])
+            st.success(t["notification"])
+
 
 if __name__ == "__main__":
     main()

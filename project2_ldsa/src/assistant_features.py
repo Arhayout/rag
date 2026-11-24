@@ -1,9 +1,11 @@
 """Session-scoped document tools and Groq helpers for the LDSA app."""
 from __future__ import annotations
 
+import ipaddress
 import io
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 import feedparser
 from groq import Groq
@@ -11,10 +13,16 @@ from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 from pypdf import PdfReader
 
-from src.config import GROQ_BASE_URL, GROQ_MODEL
+from src.config import GROQ_MODEL
 from src.embeddings import get_embeddings
 
 MAX_ANSWER_WORDS = 100
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+OFFICIAL_FEED_HOSTS = {
+    "legifrance.gouv.fr", "service-public.fr", "vie-publique.fr",
+    "justice.gouv.fr", "sgg.gov.ma", "justice.gov.ma",
+    "adala.justice.gov.ma", "maroc.ma", "sg.gov.ma",
+}
 
 
 def trim_words(text: str, limit: int = MAX_ANSWER_WORDS) -> str:
@@ -22,6 +30,18 @@ def trim_words(text: str, limit: int = MAX_ANSWER_WORDS) -> str:
     if len(words) <= limit:
         return text.strip()
     return " ".join(words[:limit]).rstrip(" ,;:") + "…"
+
+
+def _groq_key() -> str | None:
+    import os
+    key = os.environ.get("GROQ_API_KEY")
+    if not key:
+        try:
+            import streamlit as st
+            key = st.secrets.get("GROQ_API_KEY")
+        except Exception:
+            key = None
+    return key
 
 
 def answer_with_groq(
@@ -32,17 +52,7 @@ def answer_with_groq(
     task: str,
     extra_context: str = "",
 ) -> str:
-    import os
-    try:
-        api_key = os.environ.get("GROQ_API_KEY")
-    except Exception:
-        api_key = None
-    if not api_key:
-        try:
-            import streamlit as st
-            api_key = st.secrets.get("GROQ_API_KEY")
-        except Exception:
-            api_key = None
+    api_key = _groq_key()
     if not api_key:
         raise RuntimeError("GROQ_API_KEY is not configured")
     if not documents:
@@ -52,9 +62,8 @@ def answer_with_groq(
         meta = doc.metadata
         passages.append(f"[S{i}] {meta.get('source', 'uploaded document')} | page {meta.get('page', 'n/a')}\n{doc.page_content[:3500]}")
     context = "\n\n".join(passages)
-    client = Groq(api_key=api_key)
-    response = client.chat.completions.create(
-        model=os.environ.get("GROQ_MODEL", GROQ_MODEL),
+    response = Groq(api_key=api_key).chat.completions.create(
+        model=__import__("os").environ.get("GROQ_MODEL", GROQ_MODEL),
         temperature=0,
         max_tokens=450,
         messages=[
@@ -75,16 +84,17 @@ def build_upload_index(uploaded_files: list[Any]) -> FAISS:
     """Extract PDFs and create a temporary in-memory FAISS index."""
     chunks: list[Document] = []
     for uploaded in uploaded_files:
+        if uploaded.size > MAX_UPLOAD_BYTES:
+            raise ValueError(f"{uploaded.name} exceeds the 15 MB upload limit.")
         reader = PdfReader(io.BytesIO(uploaded.getvalue()))
         for page_number, page in enumerate(reader.pages):
-            text = page.extract_text() or ""
-            text = re.sub(r"\s+", " ", text).strip()
+            text = re.sub(r"\s+", " ", page.extract_text() or "").strip()
             for start in range(0, len(text), 1200):
                 chunk = text[start:start + 1200]
                 if chunk:
                     chunks.append(Document(
                         page_content=chunk,
-                        metadata={"source": uploaded.name, "page": page_number},
+                        metadata={"source": uploaded.name, "page": page_number, "document_type": "user_upload"},
                     ))
     if not chunks:
         raise ValueError("No extractable text found. Scanned PDFs require OCR.")
@@ -98,14 +108,7 @@ def search_index(index: Any, query: str, k: int = 5) -> list[Document]:
 
 
 def transcribe_audio(audio_bytes: bytes, language: str = "fr") -> str:
-    import os
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        try:
-            import streamlit as st
-            api_key = st.secrets.get("GROQ_API_KEY")
-        except Exception:
-            api_key = None
+    api_key = _groq_key()
     if not api_key:
         raise RuntimeError("GROQ_API_KEY is not configured")
     result = Groq(api_key=api_key).audio.transcriptions.create(
@@ -118,15 +121,20 @@ def transcribe_audio(audio_bytes: bytes, language: str = "fr") -> str:
 
 
 def read_legal_feed(url: str) -> list[dict[str, str]]:
-    """Read a user-supplied trusted RSS/Atom feed; no background polling."""
+    """Read a user-supplied trusted government RSS/Atom feed; no background polling."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if parsed.scheme != "https" or not any(
+        host == domain or host.endswith("." + domain) for domain in OFFICIAL_FEED_HOSTS
+    ):
+        raise ValueError("Use an HTTPS feed hosted on an allowlisted official government domain.")
+    if parsed.port not in (None, 443) or parsed.username or parsed.password:
+        raise ValueError("Invalid feed URL.")
     feed = feedparser.parse(url)
     if feed.bozo and not feed.entries:
         raise ValueError("Invalid RSS/Atom feed")
-    items = []
-    for entry in feed.entries[:20]:
-        items.append({
-            "title": str(entry.get("title", "Untitled update")),
-            "published": str(entry.get("published", entry.get("updated", "Date unavailable"))),
-            "link": str(entry.get("link", "")),
-        })
-    return items
+    return [{
+        "title": str(entry.get("title", "Untitled update")),
+        "published": str(entry.get("published", entry.get("updated", "Date unavailable"))),
+        "link": str(entry.get("link", "")),
+    } for entry in feed.entries[:20]]
