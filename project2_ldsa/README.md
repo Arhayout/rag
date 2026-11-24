@@ -18,17 +18,17 @@ On first launch, the app downloads available PDFs registered in `data/moroccan_l
 
 Review every source, consolidation date, and amendment before relying on it. The Arabic Official Bulletin is authoritative; a French translation may be older or incomplete.
 
-OpenAI is optional. Without `OPENAI_API_KEY`, the project uses local multilingual embeddings and extractive summaries. If configured, OpenAI is used for document summaries.
+No API key is required. The app uses local multilingual embeddings by default. If `OPENAI_API_KEY` is configured, OpenAI is used for document summaries. OpenAI embeddings are opt-in via `USE_OPENAI_EMBEDDINGS=true` and incur API charges.
 
 ## Deploy on Streamlit Community Cloud
 
 1. Open https://share.streamlit.io/ and sign in with GitHub.
 2. Select repository `Arhayout/rag`, branch `main`, and app file `project2_ldsa/app.py`.
 3. Select Python 3.12.
-4. Add `OPENAI_API_KEY` under app Secrets only if you want OpenAI summaries.
+4. Leave Secrets empty for the free local-embedding mode. Add `OPENAI_API_KEY` only if you want OpenAI summaries.
 5. Deploy.
 
-The app downloads the registered legal PDFs on first startup; no API key is required for local embeddings or retrieval. Streamlit Community Cloud has resource limits, so first startup can take several minutes while the embedding model is downloaded and the index is built.
+The app downloads the registered legal PDFs on first startup; no API key is required for retrieval. Streamlit Community Cloud has resource limits, so first startup can take several minutes while the embedding model is downloaded and the index is built.
 
 ## Validation
 
