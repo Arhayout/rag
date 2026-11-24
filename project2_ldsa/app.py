@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import logging
+import os
 from xml.sax.saxutils import escape
 
 import streamlit as st
@@ -12,12 +13,18 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from reportlab.lib.units import cm
 
 from src.assistant_features import answer_with_groq, build_upload_index, search_index, transcribe_audio, read_legal_feed
-from src.config import DEFAULT_TOP_K, JURISDICTIONS
+from src.config import DEFAULT_TOP_K, JURISDICTIONS, GROQ_MODEL
 from src.document_loader import LegalDocumentLoader
 from src.vector_store import LegalDocumentStore
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+GROQ_MODELS = {
+    "GPT-OSS 120B · Advanced reasoning": "openai/gpt-oss-120b",
+    "Qwen 3.8 27B · Multilingual (preview)": "qwen/qwen3.8-27b",
+    "GPT-OSS 20B · Faster reasoning": "openai/gpt-oss-20b",
+}
 
 UI = {
     "English": {
@@ -30,7 +37,7 @@ UI = {
         "check":"Check updates","no_feed":"Manual checks only. HTTPS feeds must use an allowlisted official government domain.",
         "empty":"No relevant official sources found. Add verified legal documents first.","disclaimer":"Legal information only, not legal advice. Verify current official texts and consult a qualified lawyer.",
         "download":"Download answer as PDF","no_key":"Configure GROQ_API_KEY in Streamlit Secrets.","upload_help":"PDF only, maximum 15 MB per file. Processed in memory for this session.",
-        "law_context":"Also retrieve official legal sources","notification":"Updates found","language":"Interface",
+        "law_context":"Also retrieve official legal sources","notification":"Updates found","language":"Interface","model":"AI model",
     },
     "Français": {
         "title":"Assistant juridique IA","subtitle":"Recherche juridique sourcée pour le Maroc et la France.","country":"Juridiction",
@@ -42,7 +49,7 @@ UI = {
         "check":"Vérifier les nouveautés","no_feed":"Vérification manuelle uniquement. Flux HTTPS hébergés sur un domaine gouvernemental officiel autorisé.",
         "empty":"Aucune source officielle pertinente trouvée. Ajoutez d’abord des textes juridiques vérifiés.","disclaimer":"Information juridique, pas un conseil juridique. Vérifiez les textes officiels en vigueur et consultez un avocat.",
         "download":"Télécharger la réponse en PDF","no_key":"Configurez GROQ_API_KEY dans les Secrets Streamlit.","upload_help":"PDF uniquement, 15 Mo maximum par fichier. Traitement en mémoire pendant la session.",
-        "law_context":"Rechercher aussi les sources juridiques officielles","notification":"Nouveautés trouvées","language":"Interface",
+        "law_context":"Rechercher aussi les sources juridiques officielles","notification":"Nouveautés trouvées","language":"Interface","model":"Modèle IA",
     },
     "العربية": {
         "title":"المساعد القانوني الذكي","subtitle":"بحث قانوني موثق لقوانين المغرب وفرنسا.","country":"النظام القانوني",
@@ -54,7 +61,7 @@ UI = {
         "check":"تحقق من التحديثات","no_feed":"التحقق يدوي فقط. يجب أن يكون رابط HTTPS على نطاق حكومي رسمي معتمد.",
         "empty":"لم يتم العثور على مصادر رسمية مناسبة. أضف نصوصاً قانونية موثقة أولاً.","disclaimer":"معلومات قانونية وليست استشارة قانونية. تحقق من النصوص الرسمية واستشر محامياً مختصاً.",
         "download":"تحميل الإجابة PDF","no_key":"أضف GROQ_API_KEY إلى Streamlit Secrets.","upload_help":"ملفات PDF فقط، بحد أقصى 15 ميغابايت لكل ملف. تتم المعالجة في الذاكرة.",
-        "law_context":"البحث أيضاً في المصادر القانونية الرسمية","notification":"تحديثات جديدة","language":"لغة الواجهة",
+        "law_context":"البحث أيضاً في المصادر القانونية الرسمية","notification":"تحديثات جديدة","language":"لغة الواجهة","model":"نموذج الذكاء الاصطناعي",
     },
 }
 
@@ -127,6 +134,11 @@ def main() -> None:
     st.caption(t["subtitle"])
 
     country = st.selectbox(t["country"], ["Morocco", "France"])
+    model_labels = list(GROQ_MODELS)
+    default_model = os.environ.get("GROQ_MODEL", GROQ_MODEL)
+    default_model_index = list(GROQ_MODELS.values()).index(default_model) if default_model in GROQ_MODELS.values() else 0
+    selected_model_label = st.selectbox(t["model"], model_labels, index=default_model_index)
+    selected_model = GROQ_MODELS[selected_model_label]
     code = "MA" if country == "Morocco" else "FR"
     output_language = {"English": "en", "Français": "fr", "العربية": "ar"}[language]
     index = get_legal_index(code)
@@ -157,7 +169,7 @@ def main() -> None:
                     task = ("Analyse this real-life legal situation. Identify issues, applicable rules, risks, missing facts and practical next steps."
                             if mode == t["situation"] else "Answer the legal question concisely.")
                     try:
-                        answer = answer_with_groq(query, docs, code, output_language, task)
+                        answer = answer_with_groq(query, docs, code, output_language, task, model=selected_model)
                         st.session_state.latest_answer, st.session_state.latest_sources = answer, docs
                     except RuntimeError:
                         st.error(t["no_key"])
@@ -187,6 +199,7 @@ def main() -> None:
                     contract_question, combined, code, output_language,
                     "Review the uploaded contract. Separate explicit text from legal interpretation. Flag ambiguous clauses, obligations, deadlines, risks and questions for a lawyer. Do not claim illegality unless retrieved law supports it.",
                     extra_context="Uploaded files: " + st.session_state.upload_name,
+                    model=selected_model,
                 )
                 st.session_state.latest_answer, st.session_state.latest_sources = answer, combined
                 show_answer(answer, t["contract"], combined)
@@ -209,6 +222,7 @@ def main() -> None:
                         "Compare the two legal systems. Label every proposition Morocco or France. Never merge rules.",
                         extra_context="MOROCCO SOURCES:\n" + "\n".join(d.page_content[:700] for d in ma_docs)
                                      + "\nFRANCE SOURCES:\n" + "\n".join(d.page_content[:700] for d in fr_docs),
+                        model=selected_model,
                     )
                     st.session_state.latest_answer, st.session_state.latest_sources = answer, ma_docs + fr_docs
                     show_answer(answer, t["compare"], ma_docs + fr_docs)
