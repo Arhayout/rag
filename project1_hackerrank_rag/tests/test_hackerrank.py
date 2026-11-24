@@ -1,30 +1,73 @@
-"""Tests for HackerRank RAG retrieval pipeline."""
+"""Unit tests for the HackerRank RAG retrieval pipeline."""
 
-from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
+from llama_index.core.schema import Document
 
-from src.config import DATA_DIR, PROJECT_ROOT
+import src.hackerrank as hackerrank
+from src.config import PROJECT_ROOT
 
 
-def test_project_layout():
+def test_project_layout() -> None:
     assert PROJECT_ROOT.name == "project1_hackerrank_rag"
-    assert (PROJECT_ROOT / "src" / "hackerrank.py").exists()
-    assert (PROJECT_ROOT / "main.py").exists()
+    assert (PROJECT_ROOT / "src" / "hackerrank.py").is_file()
+    assert (PROJECT_ROOT / "main.py").is_file()
 
 
-def test_data_directory_exists():
-    assert DATA_DIR.exists()
+def test_load_documents_requires_pdf(tmp_path) -> None:
+    with pytest.raises(hackerrank.DataNotFoundError):
+        hackerrank._load_documents(tmp_path)
 
 
-@pytest.mark.skipif(
-    not list(DATA_DIR.glob("*.pdf")),
-    reason="PDF data not present; run scripts/download_data.sh",
-)
-def test_retrieve_chunks_returns_results():
-    from src.hackerrank import retrieve_chunks
+def test_load_documents_uses_pdf_reader(monkeypatch, tmp_path) -> None:
+    (tmp_path / "report.pdf").touch()
+    reader = Mock()
+    directory_reader = Mock()
+    directory_reader.load_data.return_value = [Mock()]
 
-    nodes = retrieve_chunks("What backend skills are in demand?", top_k=2)
-    assert len(nodes) == 2
-    assert all(node.text.strip() for node in nodes)
-    assert all(node.score is not None for node in nodes)
+    monkeypatch.setattr(hackerrank, "PyMuPDFReader", lambda: reader)
+    monkeypatch.setattr(
+        hackerrank, "SimpleDirectoryReader", lambda *args, **kwargs: directory_reader
+    )
+
+    assert hackerrank._load_documents(tmp_path) == directory_reader.load_data.return_value
+    directory_reader.load_data.assert_called_once()
+
+
+def test_get_index_builds_and_persists(monkeypatch, tmp_path) -> None:
+    index = Mock()
+    vector_index = Mock()
+    vector_index.from_documents.return_value = index
+    monkeypatch.setattr(hackerrank, "VectorStoreIndex", vector_index)
+    index_path = tmp_path / "index"
+
+    result = hackerrank.get_index([Document(text="test")], index_path)
+
+    assert result is index
+    index.storage_context.persist.assert_called_once_with(persist_dir=str(index_path))
+
+
+def test_get_index_loads_existing_index(monkeypatch, tmp_path) -> None:
+    index_path = tmp_path / "index"
+    index_path.mkdir()
+    storage_context = Mock()
+    index = Mock()
+    monkeypatch.setattr(
+        hackerrank.StorageContext, "from_defaults", Mock(return_value=storage_context)
+    )
+    monkeypatch.setattr(hackerrank, "load_index_from_storage", Mock(return_value=index))
+
+    assert hackerrank.get_index([], index_path) is index
+
+
+def test_retrieve_chunks_uses_requested_top_k(monkeypatch) -> None:
+    index = Mock()
+    retriever = Mock()
+    retriever.retrieve.return_value = ["result"]
+    index.as_retriever.return_value = retriever
+    monkeypatch.setattr(hackerrank, "get_index_instance", lambda: index)
+
+    assert hackerrank.retrieve_chunks("question", top_k=2) == ["result"]
+    index.as_retriever.assert_called_once_with(similarity_top_k=2)
+    retriever.retrieve.assert_called_once_with("question")

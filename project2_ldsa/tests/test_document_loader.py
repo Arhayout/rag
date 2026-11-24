@@ -4,9 +4,12 @@ from src.config import DATA_DIR
 from src.document_loader import LegalDocumentLoader
 
 
-def test_load_documents_returns_txt_files():
-    loader = LegalDocumentLoader(DATA_DIR)
-    docs = loader.load_documents()
-    assert len(docs) >= 5
-    assert all(doc.page_content.strip() for doc in docs)
-    assert all(doc.metadata.get("source", "").endswith(".txt") for doc in docs)
+def test_load_documents_returns_txt_files() -> None:
+    documents = LegalDocumentLoader(DATA_DIR).load_documents()
+
+    assert len(documents) >= 5
+    assert all(document.page_content.strip() for document in documents)
+    assert all(
+        document.metadata.get("source", "").endswith(".txt")
+        for document in documents
+    )
