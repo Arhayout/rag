@@ -161,8 +161,70 @@ def render_sources(
                     st.write(full_content)
 
 
+def apply_theme() -> None:
+    """Apply the selected theme; dark mode is the first-visit default."""
+    dark = st.session_state.get("theme", "dark") == "dark"
+    background = "#0e1117" if dark else "#ffffff"
+    foreground = "#f0f2f6" if dark else "#202124"
+    panel = "#161b22" if dark else "#f5f7fa"
+    border = "#30363d" if dark else "#d9dee7"
+    muted = "#aab4c0" if dark else "#5f6368"
+    st.markdown(
+        f"""
+        <style>
+        [data-testid="stAppViewContainer"] {{
+            background: {background};
+            color: {foreground};
+        }}
+        [data-testid="stHeader"], [data-testid="stToolbar"] {{
+            background: {background};
+            color: {foreground};
+        }}
+        [data-testid="stSidebar"] {{
+            background: {panel};
+            color: {foreground};
+        }}
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stMarkdownContainer"] li, label, h1, h2, h3, h4 {{
+            color: {foreground};
+        }}
+        [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input,
+        [data-testid="stSelectbox"] [role="combobox"] {{
+            background: {panel};
+            color: {foreground};
+            border-color: {border};
+        }}
+        [data-testid="stExpander"], [data-testid="stAlert"] {{
+            background: {panel};
+            border-color: {border};
+            color: {foreground};
+        }}
+        [data-testid="stCaptionContainer"], .stCaption {{
+            color: {muted};
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     st.set_page_config(page_title="Legal Research Assistant", page_icon="⚖️")
+    st.session_state.setdefault("theme", "dark")
+    _, theme_column = st.columns([7, 1.7])
+    with theme_column:
+        button_label = (
+            "☀️ Light mode"
+            if st.session_state["theme"] == "dark"
+            else "🌙 Dark mode"
+        )
+        if st.button(button_label, use_container_width=True):
+            st.session_state["theme"] = (
+                "light" if st.session_state["theme"] == "dark" else "dark"
+            )
+            st.rerun()
+    apply_theme()
+
     language = st.selectbox(
         "Interface / الواجهة",
         options=tuple(TEXT),
