@@ -1,9 +1,11 @@
-"""Download available official Adala PDFs listed in the source registry."""
+"""Download available official PDFs listed in the Moroccan source registry."""
+
 from __future__ import annotations
 
 import json
 import sys
 from pathlib import Path
+from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,13 +22,13 @@ def main() -> int:
         for language in ("ar", "fr"):
             url = item.get(f"pdf_{language}")
             if not url:
-                skipped.append(f"{item['id']} ({language}): no direct PDF URL registered")
+                skipped.append(f"{item['id']} ({language}): no direct PDF URL")
                 continue
 
             folder = DESTINATION / language
             folder.mkdir(parents=True, exist_ok=True)
             target = folder / f"{item['id']}.{language}.pdf"
-            if target.exists() and target.stat().st_size > 0:
+            if target.is_file() and target.stat().st_size:
                 print(f"[exists] {target.relative_to(ROOT)}")
                 continue
 
@@ -36,11 +38,11 @@ def main() -> int:
                     content_type = response.headers.get("Content-Type", "")
                     payload = response.read()
                 if not payload.startswith(b"%PDF-"):
-                    raise ValueError(f"Response is not a PDF (Content-Type: {content_type})")
+                    raise ValueError(f"Response is not a PDF ({content_type})")
                 target.write_bytes(payload)
                 downloaded += 1
                 print(f"[downloaded] {target.relative_to(ROOT)} ({len(payload):,} bytes)")
-            except Exception as exc:  # keep other sources downloadable if one link fails
+            except (OSError, URLError, ValueError) as exc:
                 print(f"[failed] {item['id']} ({language}): {exc}", file=sys.stderr)
                 skipped.append(f"{item['id']} ({language}): download failed")
 
@@ -49,7 +51,7 @@ def main() -> int:
         print("Needs manual review:")
         for entry in skipped:
             print(f"- {entry}")
-    print("\nCheck each document's consolidation date and amendments before legal use.")
+    print("\nVerify each document's consolidation date and amendments before legal use.")
     return 0
 
 

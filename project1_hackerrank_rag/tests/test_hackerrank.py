@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 from llama_index.core.schema import Document
 
-import src.hackerrank as hackerrank
+from src import hackerrank
 from src.config import PROJECT_ROOT
 
 
@@ -20,16 +20,18 @@ def test_load_documents_requires_pdf(tmp_path) -> None:
         hackerrank._load_documents(tmp_path)
 
 
-def test_load_documents_uses_pdf_reader(monkeypatch, tmp_path) -> None:
+def test_load_documents_uses_pdf_readers(monkeypatch, tmp_path) -> None:
     (tmp_path / "report.pdf").touch()
     reader = Mock()
     directory_reader = Mock()
-    expected_documents = [Mock()]
+    expected_documents = [Document(text="sample")]
     directory_reader.load_data.return_value = expected_documents
 
     monkeypatch.setattr(hackerrank, "PyMuPDFReader", lambda: reader)
     monkeypatch.setattr(
-        hackerrank, "SimpleDirectoryReader", lambda *args, **kwargs: directory_reader
+        hackerrank,
+        "SimpleDirectoryReader",
+        lambda *args, **kwargs: directory_reader,
     )
 
     documents = hackerrank._load_documents(tmp_path)
@@ -40,15 +42,17 @@ def test_load_documents_uses_pdf_reader(monkeypatch, tmp_path) -> None:
 
 def test_get_index_builds_and_persists(monkeypatch, tmp_path) -> None:
     index = Mock()
-    vector_index = Mock()
-    vector_index.from_documents.return_value = index
-    monkeypatch.setattr(hackerrank, "VectorStoreIndex", vector_index)
+    vector_store = Mock()
+    vector_store.from_documents.return_value = index
+    monkeypatch.setattr(hackerrank, "VectorStoreIndex", vector_store)
     index_path = tmp_path / "index"
 
     result = hackerrank.get_index([Document(text="test")], index_path)
 
     assert result is index
-    index.storage_context.persist.assert_called_once_with(persist_dir=str(index_path))
+    index.storage_context.persist.assert_called_once_with(
+        persist_dir=str(index_path)
+    )
 
 
 def test_get_index_loads_existing_index(monkeypatch, tmp_path) -> None:
@@ -57,9 +61,15 @@ def test_get_index_loads_existing_index(monkeypatch, tmp_path) -> None:
     storage_context = Mock()
     index = Mock()
     monkeypatch.setattr(
-        hackerrank.StorageContext, "from_defaults", Mock(return_value=storage_context)
+        hackerrank.StorageContext,
+        "from_defaults",
+        Mock(return_value=storage_context),
     )
-    monkeypatch.setattr(hackerrank, "load_index_from_storage", Mock(return_value=index))
+    monkeypatch.setattr(
+        hackerrank,
+        "load_index_from_storage",
+        Mock(return_value=index),
+    )
 
     assert hackerrank.get_index([], index_path) is index
 

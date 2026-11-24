@@ -7,15 +7,13 @@ from llama_index.llms.openai import OpenAI
 from src.config import LLM_MODEL
 from src.hackerrank import get_query_engine
 
-CONTEXT = """
-Purpose: The primary role of this agent is to assist users by
-providing accurate information about HackerRank support articles
-from attached tools only.
-"""
+CONTEXT = """Purpose: Answer questions using only the attached HackerRank support
+articles and skills reports."""
+
 
 TOOL_DESCRIPTION = (
-    "Use this tool to retrieve information about HackerRank support articles "
-    "and skills reports. Input should be a question about HackerRank."
+    "Retrieve information about HackerRank support articles and skills reports. "
+    "Input should be a question about HackerRank."
 )
 TOOL_NAME = "hackerrank_support"
 
@@ -29,14 +27,14 @@ def get_agent() -> ReActAgent:
         return _agent
 
     if not os.getenv("OPENAI_API_KEY"):
-        raise EnvironmentError(
+        raise OSError(
             "OPENAI_API_KEY is required for the agent. "
             "Set it in your environment or .env file."
         )
 
     llm = OpenAI(model=LLM_MODEL, temperature=0.1)
     tool = QueryEngineTool(
-        get_query_engine(),
+        query_engine=get_query_engine(),
         metadata=ToolMetadata(description=TOOL_DESCRIPTION, name=TOOL_NAME),
     )
     _agent = ReActAgent.from_tools(

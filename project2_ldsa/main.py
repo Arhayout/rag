@@ -1,4 +1,4 @@
-"""CLI for the Legal Document Search Assistant."""
+"""Command-line interface for Moroccan legal document search."""
 
 from __future__ import annotations
 
@@ -19,37 +19,25 @@ logger = logging.getLogger(__name__)
 def search(query: str, top_k: int) -> None:
     vectorstore = LegalDocumentStore.load_local(VECTOR_STORE_DIR)
     if vectorstore is None:
-        logger.info("No index found. Building...")
         documents = LegalDocumentLoader().load_documents()
         vectorstore = LegalDocumentStore().save_index(documents)
 
     results = LegalDocumentStore.query_similar(vectorstore, query, top_k)
     print(f"Query: {query}\n")
-    for i, doc in enumerate(results, 1):
-        source = doc.metadata.get("source", "unknown")
-        print(f"--- Result {i} [{source}] ---")
-        print(f"Summary: {doc.page_content}")
-        excerpt = doc.metadata.get("full_content", "")[:300]
-        if excerpt:
-            print(f"Excerpt: {excerpt}...")
+    for index, document in enumerate(results, start=1):
+        source = document.metadata.get("source", "unknown")
+        print(f"--- Result {index} [{source}] ---")
+        print(document.page_content)
         print()
 
 
 def main() -> None:
     load_dotenv()
-
-    parser = argparse.ArgumentParser(description="Legal Document Search Assistant")
-    parser.add_argument(
-        "query",
-        nargs="?",
-        default="Copyright disputes in digital media",
-        help="Legal topic or question",
-    )
+    parser = argparse.ArgumentParser(description="Moroccan legal document search")
+    parser.add_argument("query", help="Legal question or topic")
     parser.add_argument("-k", "--top-k", type=int, default=DEFAULT_TOP_K)
     parser.add_argument(
-        "--rebuild",
-        action="store_true",
-        help="Force rebuild of the FAISS index",
+        "--rebuild", action="store_true", help="Rebuild the FAISS index"
     )
     args = parser.parse_args()
 
@@ -58,7 +46,7 @@ def main() -> None:
             documents = LegalDocumentLoader().load_documents()
             LegalDocumentStore().save_index(documents)
         search(args.query, args.top_k)
-    except Exception as exc:
+    except (FileNotFoundError, ValueError, OSError, RuntimeError) as exc:
         logger.error("%s", exc)
         sys.exit(1)
 
