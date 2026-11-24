@@ -1,6 +1,6 @@
-# Moroccan Legal Search
+# Multilingual Legal Research Assistant
 
-Bilingual Arabic/French semantic search over Moroccan legal documents. The app uses LangChain, multilingual sentence-transformer embeddings, and FAISS.
+A Streamlit legal RAG application with an English/French/Arabic interface, separate Moroccan and French corpora, multilingual semantic retrieval, and optional answer generation through Groq.
 
 ## Local setup
 
@@ -14,21 +14,29 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-On first launch, the app downloads available PDFs registered in `data/moroccan_legal_sources.json` from the Moroccan Ministry of Justice Adala portal. To download them manually, run `python scripts/download_moroccan_sources.py`.
+## Jurisdictions and corpus layout
 
-Review every source, consolidation date, and amendment before relying on it. The Arabic Official Bulletin is authoritative; a French translation may be older or incomplete.
+The indexes and source directories are isolated by jurisdiction:
 
-No API key is required. The app uses local multilingual embeddings by default. If `OPENAI_API_KEY` is configured, OpenAI is used for document summaries. OpenAI embeddings are opt-in via `USE_OPENAI_EMBEDDINGS=true` and incur API charges.
+- Morocco: `data/morocco/ar/` and `data/morocco/fr/`
+- France: `data/france/fr/`
 
-## Deploy on Streamlit Community Cloud
+Place verified PDF or UTF-8 TXT legal documents in the matching language folder. The app never searches one jurisdiction's index while another is selected. Morocco retains its official-source downloader. The France corpus is intentionally empty until French legal documents are supplied; the app does not silently substitute Moroccan law.
 
-1. Open https://share.streamlit.io/ and sign in with GitHub.
-2. Select repository `Arhayout/rag`, branch `main`, and app file `project2_ldsa/app.py`.
-3. Select Python 3.12.
-4. Leave Secrets empty for the free local-embedding mode. Add `OPENAI_API_KEY` only if you want OpenAI summaries.
-5. Deploy.
+For Morocco, the Arabic Official Bulletin is authoritative. French translations can be older or incomplete. For France, prioritise current official consolidated texts and check amendments and effective dates before relying on a result.
 
-The app downloads the registered legal PDFs on first startup; no API key is required for retrieval. Streamlit Community Cloud has resource limits, so first startup can take several minutes while the embedding model is downloaded and the index is built.
+## Groq answer generation
+
+Retrieval works locally without a Groq key. To generate an answer from retrieved passages, add a Groq API key to Streamlit Secrets:
+
+```toml
+GROQ_API_KEY = "your-groq-api-key"
+GROQ_MODEL = "openai/gpt-oss-120b"
+```
+
+Alternatively, set `GROQ_API_KEY` and optionally `GROQ_MODEL` as environment variables. Never commit secrets to Git. The default model is Groq's production `openai/gpt-oss-120b`; it can be overridden in Secrets.
+
+The answer prompt restricts claims to retrieved passages and requires source markers such as `[S1]`. The UI displays the corresponding document names and page numbers. If the retrieved material is insufficient, the model is instructed to say so. AI output can still be wrong; verify the cited official text.
 
 ## Validation
 
@@ -42,4 +50,4 @@ pytest -q
 
 ## Legal notice
 
-This is a document retrieval aid, not legal advice. Search results are not a statement of current law. Verify the original official text, amendments, and effective dates before use.
+This is a document retrieval and information tool, not legal advice. Verify the original official text, amendments, consolidation date, and effective dates.
