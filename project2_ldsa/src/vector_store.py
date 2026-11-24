@@ -22,10 +22,13 @@ class LegalDocumentStore:
         self.vectorstore_path = Path(vecstore_path)
         self.embeddings = get_embeddings()
 
+    def generate_summary(self, document: str) -> str:
+        return generate_summary(document)
+
     def create_summary_documents(self, documents: list[Document]) -> list[Document]:
         return [
             Document(
-                page_content=generate_summary(document.page_content),
+                page_content=self.generate_summary(document.page_content),
                 metadata={
                     **document.metadata,
                     "full_content": document.page_content,

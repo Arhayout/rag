@@ -24,7 +24,7 @@ def test_load_documents_uses_pdf_readers(monkeypatch, tmp_path) -> None:
     (tmp_path / "report.pdf").touch()
     reader = Mock()
     directory_reader = Mock()
-    expected_documents = [Document(text="sample")]
+    expected_documents = [Document(text="test document")]
     directory_reader.load_data.return_value = expected_documents
 
     monkeypatch.setattr(hackerrank, "PyMuPDFReader", lambda: reader)
@@ -42,9 +42,9 @@ def test_load_documents_uses_pdf_readers(monkeypatch, tmp_path) -> None:
 
 def test_get_index_builds_and_persists(monkeypatch, tmp_path) -> None:
     index = Mock()
-    vector_store = Mock()
-    vector_store.from_documents.return_value = index
-    monkeypatch.setattr(hackerrank, "VectorStoreIndex", vector_store)
+    vector_index = Mock()
+    vector_index.from_documents.return_value = index
+    monkeypatch.setattr(hackerrank, "VectorStoreIndex", vector_index)
     index_path = tmp_path / "index"
 
     result = hackerrank.get_index([Document(text="test")], index_path)

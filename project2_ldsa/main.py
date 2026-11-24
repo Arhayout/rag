@@ -27,17 +27,25 @@ def search(query: str, top_k: int) -> None:
     for index, document in enumerate(results, start=1):
         source = document.metadata.get("source", "unknown")
         print(f"--- Result {index} [{source}] ---")
-        print(document.page_content)
+        print(f"Summary: {document.page_content}")
+        excerpt = document.metadata.get("full_content", "")[:300]
+        if excerpt:
+            print(f"Excerpt: {excerpt}...")
         print()
 
 
 def main() -> None:
     load_dotenv()
-    parser = argparse.ArgumentParser(description="Moroccan legal document search")
-    parser.add_argument("query", help="Legal question or topic")
+    parser = argparse.ArgumentParser(description="Legal Document Search Assistant")
+    parser.add_argument(
+        "query",
+        nargs="?",
+        default="Copyright disputes in digital media",
+        help="Legal topic or question",
+    )
     parser.add_argument("-k", "--top-k", type=int, default=DEFAULT_TOP_K)
     parser.add_argument(
-        "--rebuild", action="store_true", help="Rebuild the FAISS index"
+        "--rebuild", action="store_true", help="Force rebuild of the FAISS index"
     )
     args = parser.parse_args()
 

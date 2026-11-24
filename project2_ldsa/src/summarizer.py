@@ -35,10 +35,12 @@ def extractive_summary(document: str, max_words: int = SUMMARY_MAX_WORDS) -> str
     return " ".join(words[:max_words]) + "..."
 
 
-def generate_summary(document: str) -> str:
+def generate_summary(
+    document: str, llm: ChatOpenAI | None = None
+) -> str:
     """Use OpenAI when configured; otherwise summarize extractively."""
     if not os.getenv("OPENAI_API_KEY"):
         return extractive_summary(document)
 
-    chain = SUMMARY_PROMPT | _openai_model() | StrOutputParser()
+    chain = SUMMARY_PROMPT | (llm or _openai_model()) | StrOutputParser()
     return chain.invoke({"document": document})
