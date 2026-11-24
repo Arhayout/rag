@@ -1,42 +1,49 @@
-# Multilingual Legal Research Assistant
+# Multilingual Legal AI Copilot
 
-A Streamlit legal RAG application with an English/French/Arabic interface, separate Moroccan and French corpora, multilingual semantic retrieval, and optional answer generation through Groq.
+Streamlit legal research assistant for Morocco and France. Supports English, French and Arabic UI, separate legal corpora, Groq-grounded answers, user PDF review, voice transcription, cross-jurisdiction comparison, PDF export and manual RSS/Atom checks.
 
-## Local setup
-
-Use Python 3.12.
+## Run
 
 ```bash
 cd project2_ldsa
-python -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Jurisdictions and corpus layout
-
-The indexes and source directories are isolated by jurisdiction:
-
-- Morocco: `data/morocco/ar/` and `data/morocco/fr/`
-- France: `data/france/fr/`
-
-Place verified PDF or UTF-8 TXT legal documents in the matching language folder. The app never searches one jurisdiction's index while another is selected. Morocco retains its official-source downloader. The France corpus is intentionally empty until French legal documents are supplied; the app does not silently substitute Moroccan law.
-
-For Morocco, the Arabic Official Bulletin is authoritative. French translations can be older or incomplete. For France, prioritise current official consolidated texts and check amendments and effective dates before relying on a result.
-
-## Groq answer generation
-
-Retrieval works locally without a Groq key. To generate an answer from retrieved passages, add a Groq API key to Streamlit Secrets:
+Configure secrets in `.streamlit/secrets.toml` (never commit this file):
 
 ```toml
 GROQ_API_KEY = "your-groq-api-key"
 GROQ_MODEL = "openai/gpt-oss-120b"
 ```
 
-Alternatively, set `GROQ_API_KEY` and optionally `GROQ_MODEL` as environment variables. Never commit secrets to Git. The default model is Groq's production `openai/gpt-oss-120b`; it can be overridden in Secrets.
+## Features
 
-The answer prompt restricts claims to retrieved passages and requires source markers such as `[S1]`. The UI displays the corresponding document names and page numbers. If the retrieved material is insufficient, the model is instructed to say so. AI output can still be wrong; verify the cited official text.
+- English / Français / العربية interface; dark mode by default with a top toggle.
+- Jurisdiction selector: Morocco or France. The legal indexes are loaded independently.
+- Legal question and real-life situation analysis, grounded in retrieved legal documents.
+- PDF contract upload and review. Uploads are parsed and indexed in memory for the current session only; scanned PDFs need OCR.
+- Morocco–France comparison only runs when both jurisdictions have retrieved evidence. Each source is labelled by jurisdiction.
+- Voice input uses Groq Whisper transcription; browser microphone permission is required.
+- Answers can be exported to PDF.
+- Manual RSS/Atom feed checks. Paste a trusted official feed URL; there is no background scheduler or push notification service.
+
+## Legal corpora
+
+- Morocco: `data/morocco/ar/` and `data/morocco/fr/`
+- France: `data/france/fr/`
+
+Only add verified official documents. The app never substitutes one country's law for the other. A missing corpus is reported rather than guessed.
+
+## Privacy and limitations
+
+- Uploaded contract files are not written to disk or added to the shared legal indexes. They remain in session memory while the app session is active.
+- RSS checks are user-triggered and session-local; scheduled alerts require a separate hosting/scheduler integration.
+- Scanned PDFs are not OCR-processed.
+- AI answers are capped at 100 words including citations. Always verify current official law and seek qualified legal advice for decisions.
+- Configure API credentials in Streamlit Secrets or environment variables. Never commit keys.
 
 ## Validation
 
@@ -47,7 +54,3 @@ ruff format --check .
 mypy --ignore-missing-imports --check-untyped-defs src app.py main.py scripts
 pytest -q
 ```
-
-## Legal notice
-
-This is a document retrieval and information tool, not legal advice. Verify the original official text, amendments, consolidation date, and effective dates.

@@ -5,5 +5,8 @@ langchain-huggingface
 langchain-openai
 pypdf
 python-dotenv
+reportlab
 sentence-transformers
 streamlit
+groq
+feedparser
