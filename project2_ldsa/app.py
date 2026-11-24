@@ -162,46 +162,24 @@ def render_sources(
 
 
 def apply_theme() -> None:
-    """Apply the selected theme; dark mode is the first-visit default."""
+    """Apply a restrained, high-readability theme."""
     dark = st.session_state.get("theme", "dark") == "dark"
-    background = "#0e1117" if dark else "#ffffff"
-    foreground = "#f0f2f6" if dark else "#202124"
-    panel = "#161b22" if dark else "#f5f7fa"
-    border = "#30363d" if dark else "#d9dee7"
-    muted = "#aab4c0" if dark else "#5f6368"
+    background = "#171a21" if dark else "#f7f8fa"
+    foreground = "#e6e9ef" if dark else "#20242b"
+    panel = "#222833" if dark else "#ffffff"
+    border = "#394252" if dark else "#d8dde6"
+    muted = "#aeb7c4" if dark else "#626b78"
     st.markdown(
         f"""
         <style>
-        [data-testid="stAppViewContainer"] {{
-            background: {background};
-            color: {foreground};
-        }}
-        [data-testid="stHeader"], [data-testid="stToolbar"] {{
-            background: {background};
-            color: {foreground};
-        }}
-        [data-testid="stSidebar"] {{
-            background: {panel};
-            color: {foreground};
-        }}
-        [data-testid="stMarkdownContainer"] p,
-        [data-testid="stMarkdownContainer"] li, label, h1, h2, h3, h4 {{
-            color: {foreground};
-        }}
-        [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input,
-        [data-testid="stSelectbox"] [role="combobox"] {{
-            background: {panel};
-            color: {foreground};
-            border-color: {border};
-        }}
-        [data-testid="stExpander"], [data-testid="stAlert"] {{
-            background: {panel};
-            border-color: {border};
-            color: {foreground};
-        }}
-        [data-testid="stCaptionContainer"], .stCaption {{
-            color: {muted};
-        }}
+        [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {{ background: {background}; color: {foreground}; }}
+        [data-testid="stSidebar"] {{ background: {panel}; color: {foreground}; border-right: 1px solid {border}; }}
+        [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li, label, h1, h2, h3, h4, [data-testid="stWidgetLabel"] p {{ color: {foreground}; }}
+        [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input, [data-testid="stSelectbox"] [role="combobox"] {{ background: {panel}; color: {foreground}; border: 1px solid {border}; border-radius: 8px; }}
+        [data-testid="stExpander"], [data-testid="stAlert"] {{ background: {panel}; border: 1px solid {border}; color: {foreground}; border-radius: 10px; }}
+        [data-testid="stCaptionContainer"], .stCaption {{ color: {muted}; }}
+        [data-testid="stButton"] button {{ border: 1px solid {border}; border-radius: 8px; color: {foreground}; background: {panel}; }}
+        [data-testid="stButton"] button:hover {{ border-color: #7c9bd1; color: {foreground}; }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -211,7 +189,14 @@ def apply_theme() -> None:
 def main() -> None:
     st.set_page_config(page_title="Legal Research Assistant", page_icon="⚖️")
     st.session_state.setdefault("theme", "dark")
-    _, theme_column = st.columns([7, 1.7])
+    language_column, theme_column = st.columns([3, 1.5], vertical_alignment="center")
+    with language_column:
+        language = st.selectbox(
+            "Interface language / Langue / اللغة",
+            options=tuple(TEXT),
+            format_func=lambda value: value,
+            label_visibility="collapsed",
+        )
     with theme_column:
         button_label = (
             "☀️ Light mode"
@@ -225,11 +210,6 @@ def main() -> None:
             st.rerun()
     apply_theme()
 
-    language = st.selectbox(
-        "Interface / الواجهة",
-        options=tuple(TEXT),
-        format_func=lambda value: value,
-    )
     labels = TEXT[language]
 
     st.title(labels["title"])
