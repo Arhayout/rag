@@ -24,14 +24,17 @@ def test_load_documents_uses_pdf_reader(monkeypatch, tmp_path) -> None:
     (tmp_path / "report.pdf").touch()
     reader = Mock()
     directory_reader = Mock()
-    directory_reader.load_data.return_value = [Mock()]
+    expected_documents = [Mock()]
+    directory_reader.load_data.return_value = expected_documents
 
     monkeypatch.setattr(hackerrank, "PyMuPDFReader", lambda: reader)
     monkeypatch.setattr(
         hackerrank, "SimpleDirectoryReader", lambda *args, **kwargs: directory_reader
     )
 
-    assert hackerrank._load_documents(tmp_path) == directory_reader.load_data.return_value
+    documents = hackerrank._load_documents(tmp_path)
+
+    assert documents == expected_documents
     directory_reader.load_data.assert_called_once()
 
 
