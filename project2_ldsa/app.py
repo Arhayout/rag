@@ -189,41 +189,44 @@ def apply_theme() -> None:
 def main() -> None:
     st.set_page_config(page_title="Legal Research Assistant", page_icon="⚖️")
     st.session_state.setdefault("theme", "dark")
-    language_column, theme_column = st.columns([3, 1.5], vertical_alignment="center")
-    with language_column:
-        language = st.selectbox(
-            "Interface language / Langue / اللغة",
-            options=tuple(TEXT),
-            format_func=lambda value: value,
-            label_visibility="collapsed",
+    with st.container(border=True):
+        jurisdiction_column, language_column, theme_column = st.columns(
+            [2.2, 1.8, 1.5], vertical_alignment="center"
         )
-    with theme_column:
-        button_label = (
-            "☀️ Light mode"
-            if st.session_state["theme"] == "dark"
-            else "🌙 Dark mode"
-        )
-        if st.button(button_label, use_container_width=True):
-            st.session_state["theme"] = (
-                "light" if st.session_state["theme"] == "dark" else "dark"
+        with jurisdiction_column:
+            jurisdiction = st.selectbox(
+                "Country / Jurisdiction",
+                options=("MA", "FR"),
+                format_func=lambda value: (
+                    TEXT[language]["morocco"] if value == "MA" else TEXT[language]["france"]
+                ) if "language" in st.session_state else (
+                    "Morocco" if value == "MA" else "France"
+                ),
+                key="jurisdiction",
             )
-            st.rerun()
+        with language_column:
+            language = st.selectbox(
+                "Language",
+                options=tuple(TEXT),
+                format_func=lambda value: value,
+                key="interface_language",
+            )
+        with theme_column:
+            button_label = (
+                "☀️ Light mode"
+                if st.session_state["theme"] == "dark"
+                else "🌙 Dark mode"
+            )
+            if st.button(button_label, use_container_width=True):
+                st.session_state["theme"] = (
+                    "light" if st.session_state["theme"] == "dark" else "dark"
+                )
+                st.rerun()
     apply_theme()
 
     labels = TEXT[language]
 
     st.title(labels["title"])
-    st.caption(labels["caption"])
-    st.info(labels["disclaimer"])
-
-    jurisdiction = st.selectbox(
-        labels["jurisdiction"],
-        options=("MA", "FR"),
-        format_func=lambda value: (
-            labels["morocco"] if value == "MA" else labels["france"]
-        ),
-    )
-
     try:
         vectorstore = initialize_retrieval_system(jurisdiction)
     except (FileNotFoundError, ValueError) as exc:
