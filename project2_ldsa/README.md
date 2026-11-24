@@ -30,9 +30,12 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env  # optional: set OPENAI_API_KEY for OpenAI embeddings/summaries
+python scripts/download_moroccan_sources.py
 ```
 
-Place official PDFs or UTF-8 text files under `data/morocco/ar/` and `data/morocco/fr/`. The loader accepts both PDF and TXT and tags each page with its language and Moroccan jurisdiction. Image-only/scanned PDFs need OCR before indexing.
+The downloader retrieves only direct official PDFs registered in the JSON file. Missing language versions are deliberately reported for manual retrieval from the corresponding Adala portal page; it does not fabricate translations. Add administrative decrees, orders, circulars, and other texts individually, with their publication dates and Official Bulletin references.
+
+The loader accepts PDF and UTF-8 TXT files under `data/morocco/ar/` and `data/morocco/fr/`, tagging each page with its language and Moroccan jurisdiction. Image-only/scanned PDFs need OCR before indexing.
 
 Rebuild and query:
 
